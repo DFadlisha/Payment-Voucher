@@ -263,6 +263,48 @@ ipcMain.handle('load-voucher-data', async () => {
     return { success: false };
 });
 
+// Handle Excel export
+ipcMain.handle('export-vouchers-excel', async (event, vouchers) => {
+    const { filePath } = await dialog.showSaveDialog({
+        title: 'Export Vouchers to Excel',
+        defaultPath: `vouchers-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+        filters: [
+            { name: 'Excel Files', extensions: ['xlsx'] }
+        ]
+    });
+
+    if (filePath) {
+        try {
+            const XLSX = require('xlsx');
+            
+            // Format data for Excel
+            const excelData = vouchers.map(v => ({
+                'PV Number': v.pv_number,
+                'Company': v.company.toUpperCase(),
+                'Date': v.date,
+                'Pay To': v.pay_to,
+                'Payment Method': v.payment_method.toUpperCase(),
+                'Total Amount (RM)': v.total_amount,
+                'Prepared By': v.prepared_by,
+                'Approved By': v.approved_by,
+                'Received By': v.received_by,
+                'Items': v.items.map(item => `${item.description} (RM ${item.amount})`).join('; ')
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Vouchers');
+            
+            XLSX.writeFile(workbook, filePath);
+            return { success: true, path: filePath };
+        } catch (error) {
+            console.error('Excel Export Error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    return { success: false };
+});
+
 // Handle PDF export
 ipcMain.handle('export-pdf', async (event) => {
     const { filePath } = await dialog.showSaveDialog({

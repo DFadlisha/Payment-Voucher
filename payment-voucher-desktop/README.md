@@ -4,13 +4,14 @@ A professional desktop application for creating and managing payment vouchers, b
 
 ## Features
 
-✅ **Native Desktop App** - Runs on Windows, Mac, and Linux
-✅ **Beautiful Modern UI** - Glassmorphism design with smooth animations
-✅ **Save/Load Vouchers** - Store vouchers as JSON files
-✅ **PDF Export** - Export vouchers to PDF format
-✅ **Keyboard Shortcuts** - Quick access to common actions
-✅ **Offline Work** - No internet connection required
-✅ **Professional Output** - Clean, printable voucher format
+✅ **Local Database** - Persistent storage for vouchers using NeDB
+✅ **Excel Export** - Batch export all or filtered vouchers to professional spreadsheets
+✅ **Voucher Management** - History view with search, summary, and deletion
+✅ **Auto PV Numbering** - Automatic sequence management for PV numbers
+✅ **Signature Support** - Upload and display digital signatures
+✅ **PDF Export** - Export individual vouchers to PDF format
+✅ **Native Desktop App** - optimized for Windows desktop environment
+✅ **Professional Output** - Branding for Mentari Infiniti and NES Solution
 
 ## Installation
 
@@ -63,29 +64,28 @@ Creates `.AppImage` and `.deb` files in the `dist-electron` folder.
 ## Keyboard Shortcuts
 
 - **Ctrl/Cmd + N** - New Voucher
-- **Ctrl/Cmd + S** - Save Voucher
-- **Ctrl/Cmd + O** - Load Voucher
-- **Ctrl/Cmd + P** - Export to PDF
+- **Ctrl/Cmd + S** - Save to Database
+- **Ctrl/Cmd + H** - Manage Vouchers / History
+- **Ctrl/Cmd + P** - Print / Export to PDF
 
 ## Usage
 
 1. **Create a New Voucher**
-   - Fill in the PV number and date
-   - Enter payee information
-   - Add payment items with descriptions and amounts
-   - Add notes and signatures
+   - PV number is auto-generated based on the current sequence
+   - Choose company (Mentari or NES)
+   - Fill in date, payee, and payment method
+   - Add items (Description, Invoice No, Amount)
+   - Upload signatures for Prepared, Approved, and Received
 
-2. **Save Your Work**
-   - Click "Save" or press Ctrl/Cmd + S
-   - Choose a location to save the JSON file
+2. **Save and Manage**
+   - Click "Save" (Ctrl+S) to store the voucher in the internal database
+   - Click "Manage Vouchers" (Ctrl+H) to see all previous records
+   - Use the Search bar to find specific vouchers by PV number or Name
+   - Export the entire list to Excel using the "Export Excel" button
 
-3. **Load Existing Voucher**
-   - Click "Load" or press Ctrl/Cmd + O
-   - Select a previously saved JSON file
-
-4. **Export to PDF**
-   - Click "Export PDF" or press Ctrl/Cmd + P
-   - Choose where to save the PDF file
+3. **Output and Printing**
+   - Review the preview on the right side of the screen
+   - Click "Print" (Ctrl+P) to export the current voucher as a professional PDF
 
 ## Project Structure
 
