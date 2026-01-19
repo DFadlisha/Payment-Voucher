@@ -32,9 +32,13 @@ function initDatabase() {
 
 async function initializeSettings() {
     try {
-        const counter = await db.settings.findOne({ key: 'pv_counter' });
-        if (!counter) {
-            await db.settings.insert({ key: 'pv_counter', value: 1 });
+        const mentariCounter = await db.settings.findOne({ key: 'pv_counter_mentari' });
+        if (!mentariCounter) {
+            await db.settings.insert({ key: 'pv_counter_mentari', value: 1 });
+        }
+        const nesCounter = await db.settings.findOne({ key: 'pv_counter_nes' });
+        if (!nesCounter) {
+            await db.settings.insert({ key: 'pv_counter_nes', value: 1 });
         }
     } catch (err) {
         console.error('Error initializing settings:', err);
@@ -42,14 +46,15 @@ async function initializeSettings() {
 }
 
 // Get next PV counter
-async function getNextPVCounter() {
+async function getNextPVCounter(company = 'mentari') {
     try {
-        const doc = await db.settings.findOne({ key: 'pv_counter' });
+        const key = `pv_counter_${company.toLowerCase()}`;
+        const doc = await db.settings.findOne({ key });
         const counter = doc ? parseInt(doc.value) : 1;
 
         // Increment counter
         await db.settings.update(
-            { key: 'pv_counter' },
+            { key },
             { $set: { value: counter + 1 } },
             { upsert: true }
         );
@@ -72,6 +77,7 @@ async function saveVoucher(voucherData) {
             date: voucherData.date,
             pay_to: voucherData.payTo,
             payment_method: voucherData.paymentMethod,
+            cheque_number: voucherData.chequeNumber,
             total_amount: totalAmount,
             items: voucherData.items,
             prepared_by: voucherData.preparedBy,
@@ -185,9 +191,21 @@ function backupDatabase(backupPath) {
     }
 }
 
-// Close database (no-op for NeDB usually, but good for interface)
+// Clear all data
+async function clearAllData() {
+    try {
+        await db.vouchers.remove({}, { multi: true });
+        await db.settings.remove({}, { multi: true });
+        await initializeSettings();
+        return { success: true };
+    } catch (error) {
+        console.error('Error clearing database:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Close database
 function closeDatabase() {
-    // compacting could go here
     if (db.vouchers) db.vouchers.compactDatafile();
     if (db.settings) db.settings.compactDatafile();
 }
@@ -203,5 +221,7 @@ module.exports = {
     getDatabaseStats,
     backupDatabase,
     closeDatabase,
-    getDatabasePath
+    getDatabasePath,
+    clearAllData
 };
+

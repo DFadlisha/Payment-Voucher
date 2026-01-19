@@ -150,9 +150,9 @@ function createMenu() {
 // Database IPC Handlers
 
 // Get next PV counter
-ipcMain.handle('get-next-pv-counter', async () => {
+ipcMain.handle('get-next-pv-counter', async (event, company) => {
     try {
-        const counter = await db.getNextPVCounter();
+        const counter = await db.getNextPVCounter(company);
         return { success: true, counter };
     } catch (error) {
         return { success: false, error: error.message };
@@ -206,6 +206,16 @@ ipcMain.handle('search-vouchers', async (event, searchTerm) => {
 ipcMain.handle('delete-voucher', async (event, pvNumber) => {
     try {
         const result = await db.deleteVoucher(pvNumber);
+        return result;
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+// Clear all data
+ipcMain.handle('clear-all-data', async () => {
+    try {
+        const result = await db.clearAllData();
         return result;
     } catch (error) {
         return { success: false, error: error.message };
@@ -276,25 +286,29 @@ ipcMain.handle('export-vouchers-excel', async (event, vouchers) => {
     if (filePath) {
         try {
             const XLSX = require('xlsx');
-            
+
             // Format data for Excel
-            const excelData = vouchers.map(v => ({
-                'PV Number': v.pv_number,
-                'Company': v.company.toUpperCase(),
-                'Date': v.date,
-                'Pay To': v.pay_to,
-                'Payment Method': v.payment_method.toUpperCase(),
-                'Total Amount (RM)': v.total_amount,
-                'Prepared By': v.prepared_by,
-                'Approved By': v.approved_by,
-                'Received By': v.received_by,
-                'Items': v.items.map(item => `${item.description} (RM ${item.amount})`).join('; ')
-            }));
+            const excelData = vouchers.map(v => {
+                const dateParts = v.date.split('-');
+                const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                return {
+                    'PV Number': v.pv_number,
+                    'Company': v.company.toUpperCase(),
+                    'Date': formattedDate,
+                    'Pay To': v.pay_to,
+                    'Payment Method': v.payment_method.toUpperCase(),
+                    'Total Amount (RM)': v.total_amount,
+                    'Prepared By': v.prepared_by,
+                    'Approved By': v.approved_by,
+                    'Received By': v.received_by,
+                    'Items': v.items.map(item => `${item.description} (RM ${item.amount})`).join('; ')
+                };
+            });
 
             const worksheet = XLSX.utils.json_to_sheet(excelData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Vouchers');
-            
+
             XLSX.writeFile(workbook, filePath);
             return { success: true, path: filePath };
         } catch (error) {
@@ -305,7 +319,48 @@ ipcMain.handle('export-vouchers-excel', async (event, vouchers) => {
     return { success: false };
 });
 
-// Handle PDF export
+// Handle specialized Voucher PDF export from HTML
+ipcMain.handle('generate-voucher-pdf', async (event, { html, filename }) => {
+    const { filePath } = await dialog.showSaveDialog({
+        title: 'Export Voucher to PDF',
+        defaultPath: filename || 'payment-voucher.pdf',
+        filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+    });
+
+    if (!filePath) return { success: false };
+
+    try {
+        // Create a hidden window to render the HTML
+        let workerWindow = new BrowserWindow({
+            show: false,
+            webPreferences: {
+                nodeIntegration: true,
+                contextIsolation: false
+            }
+        });
+
+        // Use a data URL to load the HTML content
+        await workerWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+        // Wait a bit for any styles/images/fonts to settle
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const pdfData = await workerWindow.webContents.printToPDF({
+            printBackground: true,
+            pageSize: 'A4',
+            margins: { top: 0, bottom: 0, left: 0, right: 0 }
+        });
+
+        fs.writeFileSync(filePath, pdfData);
+        workerWindow.close();
+        return { success: true, path: filePath };
+    } catch (error) {
+        console.error('PDF Generation Error:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Handle PDF export of the current window (Legacy/Generic)
 ipcMain.handle('export-pdf', async (event) => {
     const { filePath } = await dialog.showSaveDialog({
         title: 'Export to PDF',

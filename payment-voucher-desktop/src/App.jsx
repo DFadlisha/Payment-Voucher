@@ -4,14 +4,16 @@ import { Printer, Plus, Trash2, Upload, Download, Save, FolderOpen, FileText, Hi
 const { ipcRenderer } = window.require ? window.require('electron') : { ipcRenderer: null };
 
 // History Modal Component
-const HistoryModal = ({ isOpen, onClose, onLoad }) => {
+const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
     const [vouchers, setVouchers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
 
     useEffect(() => {
         if (isOpen) {
             loadVouchers();
+            setSelectedIds(new Set());
         }
     }, [isOpen]);
 
@@ -49,6 +51,39 @@ const HistoryModal = ({ isOpen, onClose, onLoad }) => {
         }
     };
 
+    const toggleSelectAll = () => {
+        if (selectedIds.size === vouchers.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(vouchers.map(v => v.pv_number)));
+        }
+    };
+
+    const toggleSelect = (pvNumber, e) => {
+        e.stopPropagation();
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(pvNumber)) {
+            newSelected.delete(pvNumber);
+        } else {
+            newSelected.add(pvNumber);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleResetDatabase = async () => {
+        if (confirm('CRITICAL ACTION: Are you sure you want to delete ALL data in the database? This will remove all vouchers and reset counters to 1. This action cannot be undone.')) {
+            if (ipcRenderer) {
+                const result = await ipcRenderer.invoke('clear-all-data');
+                if (result.success) {
+                    alert('Database has been completely reset.');
+                    loadVouchers();
+                } else {
+                    alert('Error resetting database: ' + result.error);
+                }
+            }
+        }
+    };
+
     const handleExportExcel = async () => {
         if (ipcRenderer) {
             const result = await ipcRenderer.invoke('export-vouchers-excel', vouchers);
@@ -58,6 +93,290 @@ const HistoryModal = ({ isOpen, onClose, onLoad }) => {
                 alert(`Export failed: ${result.error}`);
             }
         }
+    };
+
+    const handleExportPDFSelected = async () => {
+        const selectedVouchers = vouchers.filter(v => selectedIds.has(v.pv_number));
+        if (selectedVouchers.length === 0) return;
+
+        const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+            .map(tag => tag.outerHTML)
+            .join('\n');
+
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            const parts = dateString.split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        };
+
+        const renderVoucherHTML = (v) => {
+            const companyData = companies[v.company];
+            const totalAmount = v.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2);
+
+            return `
+                <div class="print-voucher-wrapper page-break" style="margin-bottom: 40px; background: white; width: 100%;">
+                    <div class="bg-white p-6 text-sm">
+                        <div class="relative border-2 border-gray-800 p-6">
+                            <div class="text-right text-xs mb-4">
+                                PV No: ${v.pv_number}
+                            </div>
+
+                            <div class="text-center border-b-2 border-gray-800 pb-4 mb-4">
+                                <div style="font-size: 14px; font-weight: bold;">PAYMENT VOUCHER 2026</div>
+                                <div class="flex justify-center my-3">
+                                    <img src="${companyData.logo}" alt="${companyData.name}" crossorigin="anonymous" style="height: 80px; object-fit: contain;" />
+                                </div>
+                                <div class="text-sm font-bold">${companyData.name}</div>
+                                <div class="text-xs text-gray-800 mt-1 font-bold">${companyData.reg}</div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 8px;">
+                                <div><span class="font-semibold">Pay To:</span> ${v.pay_to || ''}</div>
+                                <div><span class="font-semibold">Date:</span> ${formatDate(v.date)}</div>
+                            </div>
+
+                            <div class="mb-4 text-sm font-medium">
+                                <span class="font-semibold">Payment by:</span> <span class="capitalize ml-1">${v.payment_method}</span>
+                                ${v.payment_method === 'cheque' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Cheque No: ${v.cheque_number || ''}</div>` : ''}
+                                ${v.payment_method === 'online' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Bank: ${v.bank_name || ''}</div>` : ''}
+                            </div>
+
+                            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;">
+                                <thead>
+                                    <tr>
+                                        <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: center; width: 40px;">NO.</th>
+                                        <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: left;">DESCRIPTION</th>
+                                        <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: left; width: 120px;">INV/BILL NO.</th>
+                                        <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: right; width: 100px;">AMOUNT (RM)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${v.items.map((item, idx) => `
+                                        <tr>
+                                            <td style="border: 1px solid black; padding: 6px; text-align: center;">${idx + 1}</td>
+                                            <td style="border: 1px solid black; padding: 6px;">${item.description}</td>
+                                            <td style="border: 1px solid black; padding: 6px;">${item.invNo}</td>
+                                            <td style="border: 1px solid black; padding: 6px; text-align: right;">${item.amount ? parseFloat(item.amount).toFixed(2) : ''}</td>
+                                        </tr>
+                                    `).join('')}
+                                    <tr style="background: #e5e7eb;">
+                                        <td colspan="3" style="border: 1px solid black; padding: 8px; text-align: right; font-weight: bold;">TOTAL RM</td>
+                                        <td style="border: 1px solid black; padding: 8px; text-align: right; font-weight: bold;">${totalAmount}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div style="display: flex; border: 1px solid black; margin-top: 20px;">
+                                <div style="flex: 1; border-right: 1px solid black; padding: 10px; text-align: center;">
+                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">PREPARED BY</div>
+                                    ${v.prepared_sig ? `<img src="${v.prepared_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
+                                    <div style="font-size: 10px; margin-top: 5px;">${v.prepared_by || ''}</div>
+                                </div>
+                                <div style="flex: 1; border-right: 1px solid black; padding: 10px; text-align: center;">
+                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">APPROVED BY</div>
+                                    ${v.approved_sig ? `<img src="${v.approved_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
+                                    <div style="font-size: 10px; margin-top: 5px;">${v.approved_by || ''}</div>
+                                </div>
+                                <div style="flex: 1; padding: 10px; text-align: center;">
+                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">RECEIVED BY</div>
+                                    ${v.received_sig ? `<img src="${v.received_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
+                                    <div style="font-size: 10px; margin-top: 5px;">${v.received_by || ''}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const allVouchersContent = selectedVouchers.map(v => renderVoucherHTML(v)).join('');
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Print Payment Vouchers</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+                    ${styleTags}
+                    <style>
+                        @page { size: A4; margin: 0; }
+                        body { 
+                            margin: 0; 
+                            padding: 20px; 
+                            background: white !important; 
+                            -webkit-print-color-adjust: exact !important; 
+                            print-color-adjust: exact !important;
+                            font-family: 'Roboto', Arial, sans-serif;
+                            height: auto !important; 
+                            overflow: visible !important;
+                        }
+                        /* FORCE VISIBILITY */
+                        * { visibility: visible !important; opacity: 1 !important; }
+                        .page-break { page-break-after: always; break-after: page; }
+                        .print-voucher-wrapper { width: 100%; max-width: 800px; margin: 0 auto; display: block !important; }
+                        img { -webkit-print-color-adjust: exact; display: block !important; }
+                    </style>
+                    <script src="https://cdn.tailwindcss.com"></script>
+                </head>
+                <body>
+                    ${allVouchersContent}
+                </body>
+            </html>
+        `;
+
+        if (ipcRenderer) {
+            const result = await ipcRenderer.invoke('generate-voucher-pdf', {
+                html,
+                filename: `Vouchers-Batch-${new Date().getTime()}.pdf`
+            });
+            if (result.success) {
+                alert(`PDF exported successfully to: ${result.path}`);
+            } else if (result.error) {
+                alert(`PDF export failed: ${result.error}`);
+            }
+        }
+    };
+
+    const handlePrintSelected = () => {
+        const selectedVouchers = vouchers.filter(v => selectedIds.has(v.pv_number));
+        if (selectedVouchers.length === 0) return;
+
+        const newWindow = window.open('', '_blank', 'width=850,height=1100');
+
+        // Collect all styles but prioritize Tailwind and fonts
+        const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+            .map(tag => tag.outerHTML)
+            .join('\n');
+
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            const parts = dateString.split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        };
+
+        const renderVoucherHTML = (v) => {
+            const companyData = companies[v.company];
+            const totalAmount = v.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2);
+
+            return `
+                <div class="print-voucher-wrapper page-break" style="margin-bottom: 40px; background: white; width: 100%;">
+                    <div class="bg-white p-6 text-sm">
+                        <div class="relative border-2 border-gray-800 p-6">
+                            <div class="text-right text-xs mb-4">
+                                PV No: ${v.pv_number}
+                            </div>
+
+                            <div class="text-center border-b-2 border-gray-800 pb-4 mb-4">
+                                <div style="font-size: 14px; font-weight: bold;">PAYMENT VOUCHER 2026</div>
+                                <div class="flex justify-center my-3">
+                                    <img src="${companyData.logo}" alt="${companyData.name}" crossorigin="anonymous" style="height: 80px; object-fit: contain;" />
+                                </div>
+                                <div class="text-sm font-bold">${companyData.name}</div>
+                                <div class="text-xs text-gray-800 mt-1 font-bold">${companyData.reg}</div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 8px;">
+                                <div><span class="font-semibold">Pay To:</span> ${v.pay_to || ''}</div>
+                                <div><span class="font-semibold">Date:</span> ${formatDate(v.date)}</div>
+                            </div>
+
+                            <div class="mb-4 text-sm font-medium">
+                                <span class="font-semibold">Payment by:</span> <span class="capitalize ml-1">${v.payment_method}</span>
+                                ${v.payment_method === 'cheque' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Cheque No: ${v.cheque_number || ''}</div>` : ''}
+                                ${v.payment_method === 'online' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Bank: ${v.bank_name || ''}</div>` : ''}
+                            </div>
+
+                            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;">
+                                <thead>
+                                    <tr>
+                                        <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: center; width: 40px;">NO.</th>
+                                        <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: left;">DESCRIPTION</th>
+                                        <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: left; width: 120px;">INV/BILL NO.</th>
+                                        <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: right; width: 100px;">AMOUNT (RM)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${v.items.map((item, idx) => `
+                                        <tr>
+                                            <td style="border: 1px solid black; padding: 6px; text-align: center;">${idx + 1}</td>
+                                            <td style="border: 1px solid black; padding: 6px;">${item.description}</td>
+                                            <td style="border: 1px solid black; padding: 6px;">${item.invNo}</td>
+                                            <td style="border: 1px solid black; padding: 6px; text-align: right;">${item.amount ? parseFloat(item.amount).toFixed(2) : ''}</td>
+                                        </tr>
+                                    `).join('')}
+                                    <tr style="background: #e5e7eb;">
+                                        <td colspan="3" style="border: 1px solid black; padding: 8px; text-align: right; font-weight: bold;">TOTAL RM</td>
+                                        <td style="border: 1px solid black; padding: 8px; text-align: right; font-weight: bold;">${totalAmount}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div style="display: flex; border: 1px solid black; margin-top: 20px;">
+                                <div style="flex: 1; border-right: 1px solid black; padding: 10px; text-align: center;">
+                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">PREPARED BY</div>
+                                    ${v.prepared_sig ? `<img src="${v.prepared_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
+                                    <div style="font-size: 10px; margin-top: 5px;">${v.prepared_by || ''}</div>
+                                </div>
+                                <div style="flex: 1; border-right: 1px solid black; padding: 10px; text-align: center;">
+                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">APPROVED BY</div>
+                                    ${v.approved_sig ? `<img src="${v.approved_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
+                                    <div style="font-size: 10px; margin-top: 5px;">${v.approved_by || ''}</div>
+                                </div>
+                                <div style="flex: 1; padding: 10px; text-align: center;">
+                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">RECEIVED BY</div>
+                                    ${v.received_sig ? `<img src="${v.received_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
+                                    <div style="font-size: 10px; margin-top: 5px;">${v.received_by || ''}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const allVouchersContent = selectedVouchers.map(v => renderVoucherHTML(v)).join('');
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Print Payment Vouchers</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+                    ${styleTags}
+                    <style>
+                        @page { size: A4; margin: 0; }
+                        body { 
+                            margin: 0; 
+                            padding: 20px; 
+                            background: white !important; 
+                            -webkit-print-color-adjust: exact !important; 
+                            print-color-adjust: exact !important;
+                            font-family: 'Roboto', Arial, sans-serif;
+                            height: auto !important; 
+                            overflow: visible !important;
+                        }
+                        .page-break { page-break-after: always; break-after: page; }
+                        .print-voucher-wrapper { width: 100%; max-width: 800px; margin: 0 auto; display: block !important; }
+                        img { -webkit-print-color-adjust: exact; }
+                    </style>
+                </head>
+                <body>
+                    ${allVouchersContent}
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                                setTimeout(function() { window.close(); }, 500);
+                            }, 1500);
+                        };
+                    </script>
+                </body>
+            </html>
+        `;
+
+        newWindow.document.open();
+        newWindow.document.write(html);
+        newWindow.document.close();
     };
 
     if (!isOpen) return null;
@@ -71,6 +390,28 @@ const HistoryModal = ({ isOpen, onClose, onLoad }) => {
                     </h2>
                     <div className="flex items-center gap-3">
                         <button
+                            onClick={handlePrintSelected}
+                            disabled={selectedIds.size === 0}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedIds.size === 0
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-orange-600 text-white hover:bg-orange-700 shadow-sm'
+                                }`}
+                        >
+                            <Printer size={18} />
+                            Print Selected ({selectedIds.size})
+                        </button>
+                        <button
+                            onClick={handleExportPDFSelected}
+                            disabled={selectedIds.size === 0}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedIds.size === 0
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
+                                }`}
+                        >
+                            <Download size={18} />
+                            PDF Selected ({selectedIds.size})
+                        </button>
+                        <button
                             onClick={handleExportExcel}
                             disabled={vouchers.length === 0}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${vouchers.length === 0
@@ -81,6 +422,14 @@ const HistoryModal = ({ isOpen, onClose, onLoad }) => {
                             <Download size={18} />
                             Export Excel
                         </button>
+                        <button
+                            onClick={handleResetDatabase}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 shadow-sm transition-colors"
+                            title="Completely reset the database"
+                        >
+                            <Trash2 size={18} />
+                            Reset DB
+                        </button>
                         <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1">
                             <X size={24} />
                         </button>
@@ -88,15 +437,23 @@ const HistoryModal = ({ isOpen, onClose, onLoad }) => {
                 </div>
 
                 <div className="p-4 border-b border-gray-200 bg-white">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="Search by PV Number, Pay To, or Company..."
-                            value={searchTerm}
-                            onChange={handleSearch}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                        />
+                    <div className="flex gap-4 items-center">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                            <input
+                                type="text"
+                                placeholder="Search by PV Number, Pay To, or Company..."
+                                value={searchTerm}
+                                onChange={handleSearch}
+                                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={toggleSelectAll}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 bg-white"
+                        >
+                            {selectedIds.size === vouchers.length ? 'Deselect All' : 'Select All'}
+                        </button>
                     </div>
                 </div>
 
@@ -117,6 +474,14 @@ const HistoryModal = ({ isOpen, onClose, onLoad }) => {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 border-b border-gray-200">
                                     <tr>
+                                        <th className="px-4 py-3 w-10">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.size === vouchers.length && vouchers.length > 0}
+                                                onChange={toggleSelectAll}
+                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                                            />
+                                        </th>
                                         <th className="px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">PV Number</th>
                                         <th className="px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
                                         <th className="px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Company</th>
@@ -130,10 +495,23 @@ const HistoryModal = ({ isOpen, onClose, onLoad }) => {
                                         <tr
                                             key={voucher.id || voucher.pv_number}
                                             onClick={() => { onLoad(voucher); onClose(); }}
-                                            className="hover:bg-blue-50 cursor-pointer transition-colors group"
+                                            className={`hover:bg-blue-50 cursor-pointer transition-colors group ${selectedIds.has(voucher.pv_number) ? 'bg-blue-50/50' : ''}`}
                                         >
+                                            <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.has(voucher.pv_number)}
+                                                    onChange={(e) => toggleSelect(voucher.pv_number, e)}
+                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                                                />
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">{voucher.pv_number}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{voucher.date}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                {(() => {
+                                                    const parts = voucher.date.split('-');
+                                                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                                                })()}
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                                 <span className={`px-2 py-1 rounded text-xs font-medium ${voucher.company === 'mentari'
                                                     ? 'bg-blue-100 text-blue-700'
@@ -163,7 +541,7 @@ const HistoryModal = ({ isOpen, onClose, onLoad }) => {
                     )}
                 </div>
                 <div className="p-4 border-t border-gray-200 bg-white flex justify-between items-center text-sm text-gray-500">
-                    <div>Total Vouchers: {vouchers.length}</div>
+                    <div>Total Vouchers: {vouchers.length} | Selected: {selectedIds.size}</div>
                     <div className="font-medium text-gray-800">
                         Total Amount: RM {vouchers.reduce((sum, v) => sum + (v.total_amount || 0), 0).toFixed(2)}
                     </div>
@@ -180,7 +558,10 @@ const PaymentVoucherDesktop = () => {
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [payTo, setPayTo] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('cheque');
+    const [chequeNumber, setChequeNumber] = useState('');
     const [items, setItems] = useState([{ description: '', invNo: '', amount: '' }]);
+    const [bankName, setBankName] = useState('');
+    const [isOtherBank, setIsOtherBank] = useState(false);
     const [preparedBy, setPreparedBy] = useState('');
     const [approvedBy, setApprovedBy] = useState('');
     const [receivedBy, setReceivedBy] = useState('');
@@ -209,13 +590,13 @@ const PaymentVoucherDesktop = () => {
 
     // Initialize logic
     useEffect(() => {
-        initApp();
-    }, []);
+        initApp(company);
+    }, [company]);
 
-    const initApp = async () => {
+    const initApp = async (currentCompany) => {
         if (ipcRenderer) {
             // Get next PV counter from DB
-            const result = await ipcRenderer.invoke('get-next-pv-counter');
+            const result = await ipcRenderer.invoke('get-next-pv-counter', currentCompany);
             if (result.success) {
                 setPvCounter(result.counter);
             }
@@ -224,11 +605,16 @@ const PaymentVoucherDesktop = () => {
 
     // Generate automatic PV number
     const generatePVNumber = () => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const companyCode = company === 'mentari' ? 'MI' : 'NES';
         const counter = String(pvCounter).padStart(3, '0');
-        return `PV-${year}-${month}-${counter}`;
+        return `${companyCode}-${counter}`;
+    };
+
+    // Format date for display d/m/y
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
     };
 
     // Update PV number when counter changes
@@ -241,7 +627,7 @@ const PaymentVoucherDesktop = () => {
         if (ipcRenderer) {
             ipcRenderer.on('new-voucher', handleNewVoucher);
             ipcRenderer.on('save-voucher', handleSaveVoucher);
-            ipcRenderer.on('export-pdf', generatePDF);
+            ipcRenderer.on('export-pdf', handleExportPDF);
             ipcRenderer.on('show-history', () => setShowHistory(true));
 
             return () => {
@@ -257,7 +643,7 @@ const PaymentVoucherDesktop = () => {
         if (confirm('Create new voucher? Any unsaved changes will be lost.')) {
             resetForm();
             if (ipcRenderer) {
-                const result = await ipcRenderer.invoke('get-next-pv-counter');
+                const result = await ipcRenderer.invoke('get-next-pv-counter', company);
                 if (result.success) {
                     setPvCounter(result.counter);
                     showStatus('New voucher created');
@@ -271,7 +657,10 @@ const PaymentVoucherDesktop = () => {
         setDate(new Date().toISOString().split('T')[0]);
         setPayTo('');
         setPaymentMethod('cheque');
+        setChequeNumber('');
         setItems([{ description: '', invNo: '', amount: '' }]);
+        setBankName('');
+        setIsOtherBank(false);
         setPreparedBy('');
         setApprovedBy('');
         setReceivedBy('');
@@ -292,6 +681,8 @@ const PaymentVoucherDesktop = () => {
             date,
             payTo,
             paymentMethod,
+            chequeNumber,
+            bankName,
             items,
             preparedBy,
             approvedBy,
@@ -310,6 +701,52 @@ const PaymentVoucherDesktop = () => {
         }
     };
 
+    const handleSaveAsVoucher = async () => {
+        if (!ipcRenderer) {
+            alert('Save feature only available in desktop app');
+            return;
+        }
+
+        if (confirm('Save this as a NEW voucher? (Will generate a new PV Number)')) {
+            // Get next counter for current company
+            const resultCounter = await ipcRenderer.invoke('get-next-pv-counter', company);
+            if (resultCounter.success) {
+                const newCounter = resultCounter.counter;
+                // Generate new PV Number
+                const counterStr = String(newCounter).padStart(3, '0');
+                const companyCode = company === 'mentari' ? 'MI' : 'NES';
+                const newPvNumber = `${companyCode}-${counterStr}`;
+
+                const voucherData = {
+                    company,
+                    pvNumber: newPvNumber,
+                    date,
+                    payTo,
+                    paymentMethod,
+                    chequeNumber,
+                    bankName,
+                    items,
+                    preparedBy,
+                    approvedBy,
+                    receivedBy,
+                    preparedSig,
+                    approvedSig,
+                    receivedSig,
+                    createdAt: new Date().toISOString() // Force new creation date
+                };
+
+                const resultSave = await ipcRenderer.invoke('save-voucher-db', voucherData);
+                if (resultSave.success) {
+                    setPvCounter(newCounter);
+                    setPvNumber(newPvNumber);
+                    showStatus(`Saved as new voucher: ${newPvNumber}`);
+                } else {
+                    alert('Error saving: ' + resultSave.error);
+                }
+            }
+        }
+    };
+
     const handleLoadVoucher = (data) => {
         setCompany(data.company);
         setPvNumber(data.pv_number);
@@ -317,6 +754,11 @@ const PaymentVoucherDesktop = () => {
         setDate(data.date);
         setPayTo(data.pay_to);
         setPaymentMethod(data.payment_method);
+        setChequeNumber(data.cheque_number || '');
+        const loadedBank = data.bank_name || '';
+        const predefinedBanks = ['Maybank', 'CIMB', 'Public Bank', 'RHB', 'Hong Leong', 'AmBank', 'UOB', 'OCBC', 'Alliance Bank', 'Affin Bank', 'BSN', 'Bank Islam', 'Bank Muamalat'];
+        setBankName(loadedBank);
+        setIsOtherBank(loadedBank !== '' && !predefinedBanks.includes(loadedBank));
         setItems(data.items);
         setPreparedBy(data.prepared_by || '');
         setApprovedBy(data.approved_by || '');
@@ -363,144 +805,101 @@ const PaymentVoucherDesktop = () => {
         return items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2);
     };
 
-    const generatePDF = () => {
+    // Helper to get HTML for printing/PDF
+    const getVoucherHTML = () => {
         const printContent = document.getElementById('voucher-preview');
-        const newWindow = window.open('', '', 'width=800,height=600');
+        if (!printContent) return null;
 
-        newWindow.document.write(`
-      <html>
-        <head>
-          <title>Payment Voucher - ${pvNumber}</title>
-          <base href="${window.location.href}">
-          <style>
-            @page { size: A4; margin: 0; }
-            body { 
-              font-family: Arial, sans-serif; 
-              padding: 20px;
-              margin: 0;
-              background: white;
+        const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+            .map(tag => tag.outerHTML)
+            .join('\n');
+
+        return `
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Payment Voucher - ${pvNumber}</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+                    ${styleTags}
+                    <style>
+                        @page { size: A4; margin: 0; }
+                        body {
+                            margin: 0;
+                            padding: 40px;
+                            background: white !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                            font-family: 'Roboto', Arial, sans-serif;
+                            height: auto !important;
+                            overflow: visible !important;
+                        }
+                        /* FORCE VISIBILITY - This fixes the blank PDF issue */
+                        * { visibility: visible !important; opacity: 1 !important; }
+                        .print-container {
+                            width: 100%;
+                            max-width: 800px;
+                            margin: 0 auto;
+                            display: block !important;
+                        }
+                        #voucher-preview { padding: 0 !important; }
+                        img { -webkit-print-color-adjust: exact; display: block !important; }
+                    </style>
+                    <script src="https://cdn.tailwindcss.com"></script>
+                </head>
+                <body class="bg-white">
+                    <div class="print-container">
+                        ${printContent.innerHTML}
+                    </div>
+                </body>
+            </html>
+        `;
+    };
+
+    const handlePrint = () => {
+        const html = getVoucherHTML();
+        if (!html) return;
+
+        const printWindow = window.open('', '_blank', 'width=850,height=1100');
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+
+        printWindow.onload = () => {
+            setTimeout(() => {
+                printWindow.print();
+                setTimeout(() => printWindow.close(), 500);
+            }, 1000);
+        };
+    };
+
+    const handleExportPDF = async () => {
+        const html = getVoucherHTML();
+        if (!html) return;
+
+        if (ipcRenderer) {
+            setSavedStatus('Generating PDF...');
+            const result = await ipcRenderer.invoke('generate-voucher-pdf', {
+                html,
+                filename: `Payment-Voucher-${pvNumber}.pdf`
+            });
+
+            if (result.success) {
+                setSavedStatus(`PDF saved successfully to: ${result.path}`);
+                setTimeout(() => setSavedStatus(''), 5000);
+            } else if (result.error) {
+                alert(`Export failed: ${result.error}`);
+                setSavedStatus('');
+            } else {
+                setSavedStatus('');
             }
-            .voucher {
-              max-width: 800px;
-              margin: 0 auto;
-              border: 2px solid #333;
-              padding: 30px;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #333;
-              padding-bottom: 20px;
-            }
-            .logo {
-              font-size: 72px;
-              font-weight: bold;
-              color: #333;
-              margin: 10px 0;
-            }
-            .company-name {
-              font-size: 18px;
-              font-weight: bold;
-              margin: 5px 0;
-            }
-            .reg-number {
-              font-size: 14px;
-              color: #666;
-            }
-            .pv-number {
-              position: absolute;
-              top: 40px;
-              right: 40px;
-              font-size: 14px;
-            }
-            .info-section {
-              display: flex;
-              justify-content: space-between;
-              margin: 20px 0;
-            }
-            .payment-methods {
-              margin: 15px 0;
-            }
-            .checkbox {
-              margin-right: 5px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            th, td {
-              border: 1px solid #333;
-              padding: 8px;
-              text-align: left;
-            }
-            th {
-              background-color: #f0f0f0;
-              font-weight: bold;
-            }
-            .total-row {
-              font-weight: bold;
-              background-color: #e0e0e0;
-            }
-            .signatures {
-              display: flex;
-              justify-content: space-between;
-              margin-top: 40px;
-              border: 1px solid #333;
-            }
-            .sig-box {
-              flex: 1;
-              padding: 20px;
-              text-align: center;
-              border-right: 1px solid #333;
-              min-height: 100px;
-            }
-            .sig-box:last-child {
-              border-right: none;
-            }
-            .sig-image {
-              max-width: 150px;
-              max-height: 60px;
-              margin: 10px auto;
-            }
-            .sig-label {
-              font-weight: bold;
-              margin-bottom: 10px;
-            }
-            @media print {
-              body { padding: 0; }
-              .pv-number { position: absolute; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="print-container">
-            ${printContent.innerHTML}
-          </div>
-          <script>
-            window.onload = function() {
-              // Small delay to ensure all assets (especially logos) are rendered
-              setTimeout(function() {
-                window.print();
-                // Close the print window after printing starts
-                setTimeout(function() { window.close(); }, 500);
-              }, 500);
-            }
-          </script>
-        </body>
-      </html>
-    `);
-        newWindow.document.close();
+        }
     };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header with desktop controls */}
-                <div className="bg-white rounded-lg shadow-md p-4 mb-4 flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-gray-800">
-                        Payment Voucher Generator
-                    </h1>
+                <div className="bg-white rounded-lg shadow-md p-4 mb-4 flex justify-center items-center">
                     <div className="flex gap-2">
                         <button
                             onClick={handleNewVoucher}
@@ -521,18 +920,26 @@ const PaymentVoucherDesktop = () => {
                         <button
                             onClick={handleSaveVoucher}
                             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded flex items-center gap-2"
-                            title="Save Voucher (Ctrl+S)"
+                            title="Save current voucher (Ctrl+S)"
                         >
                             <Save size={18} />
                             Save
                         </button>
                         <button
-                            onClick={generatePDF}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded flex items-center gap-2"
-                            title="Export PDF (Ctrl+P)"
+                            onClick={handlePrint}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded flex items-center gap-2"
+                            title="Print current preview"
                         >
                             <Printer size={18} />
                             Print
+                        </button>
+                        <button
+                            onClick={handleExportPDF}
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded flex items-center gap-2"
+                            title="Save as PDF now"
+                        >
+                            <Download size={18} />
+                            Export PDF
                         </button>
                     </div>
                 </div>
@@ -572,7 +979,7 @@ const PaymentVoucherDesktop = () => {
                                         value={pvNumber}
                                         readOnly
                                         className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100 cursor-not-allowed"
-                                        placeholder="PV-YYYY-MM-XXX"
+                                        placeholder="XXX-000"
                                     />
                                 </div>
                                 <div>
@@ -619,6 +1026,59 @@ const PaymentVoucherDesktop = () => {
                                         </label>
                                     ))}
                                 </div>
+                                {paymentMethod === 'cheque' && (
+                                    <div className="mt-2">
+                                        <input
+                                            type="text"
+                                            value={chequeNumber}
+                                            onChange={(e) => setChequeNumber(e.target.value)}
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                            placeholder="Enter Cheque Number"
+                                        />
+                                    </div>
+                                )}
+                                {paymentMethod === 'online' && (
+                                    <div className="mt-2">
+                                        <select
+                                            value={isOtherBank ? 'Other' : bankName}
+                                            onChange={(e) => {
+                                                if (e.target.value === 'Other') {
+                                                    setIsOtherBank(true);
+                                                    setBankName('');
+                                                } else {
+                                                    setIsOtherBank(false);
+                                                    setBankName(e.target.value);
+                                                }
+                                            }}
+                                            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                        >
+                                            <option value="">Select Bank</option>
+                                            <option value="Maybank">Maybank</option>
+                                            <option value="CIMB">CIMB Bank</option>
+                                            <option value="Public Bank">Public Bank</option>
+                                            <option value="RHB">RHB Bank</option>
+                                            <option value="Hong Leong">Hong Leong Bank</option>
+                                            <option value="AmBank">AmBank</option>
+                                            <option value="UOB">UOB Bank</option>
+                                            <option value="OCBC">OCBC Bank</option>
+                                            <option value="Alliance Bank">Alliance Bank</option>
+                                            <option value="Affin Bank">Affin Bank</option>
+                                            <option value="BSN">BSN</option>
+                                            <option value="Bank Islam">Bank Islam</option>
+                                            <option value="Bank Muamalat">Bank Muamalat</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        {isOtherBank && (
+                                            <input
+                                                type="text"
+                                                className="w-full border border-gray-300 rounded-lg px-4 py-2 mt-2 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                                                placeholder="Enter Bank Name"
+                                                value={bankName}
+                                                onChange={(e) => setBankName(e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <div>
@@ -690,12 +1150,23 @@ const PaymentVoucherDesktop = () => {
                                         onChange={(e) => handleFileUpload(e, setPreparedSig)}
                                         className="hidden"
                                     />
-                                    <button
-                                        onClick={() => preparedRef.current.click()}
-                                        className="mt-2 w-full text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center justify-center gap-1"
-                                    >
-                                        <Upload size={14} /> Signature
-                                    </button>
+                                    <div className="flex gap-1 mt-2">
+                                        <button
+                                            onClick={() => preparedRef.current.click()}
+                                            className="flex-1 text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center justify-center gap-1"
+                                        >
+                                            <Upload size={14} /> Signature
+                                        </button>
+                                        {preparedSig && (
+                                            <button
+                                                onClick={() => setPreparedSig(null)}
+                                                className="text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded"
+                                                title="Clear Signature"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -715,12 +1186,23 @@ const PaymentVoucherDesktop = () => {
                                         onChange={(e) => handleFileUpload(e, setApprovedSig)}
                                         className="hidden"
                                     />
-                                    <button
-                                        onClick={() => approvedRef.current.click()}
-                                        className="mt-2 w-full text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center justify-center gap-1"
-                                    >
-                                        <Upload size={14} /> Signature
-                                    </button>
+                                    <div className="flex gap-1 mt-2">
+                                        <button
+                                            onClick={() => approvedRef.current.click()}
+                                            className="flex-1 text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center justify-center gap-1"
+                                        >
+                                            <Upload size={14} /> Signature
+                                        </button>
+                                        {approvedSig && (
+                                            <button
+                                                onClick={() => setApprovedSig(null)}
+                                                className="text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded"
+                                                title="Clear Signature"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -740,12 +1222,23 @@ const PaymentVoucherDesktop = () => {
                                         onChange={(e) => handleFileUpload(e, setReceivedSig)}
                                         className="hidden"
                                     />
-                                    <button
-                                        onClick={() => receivedRef.current.click()}
-                                        className="mt-2 w-full text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center justify-center gap-1"
-                                    >
-                                        <Upload size={14} /> Signature
-                                    </button>
+                                    <div className="flex gap-1 mt-2">
+                                        <button
+                                            onClick={() => receivedRef.current.click()}
+                                            className="flex-1 text-xs bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded flex items-center justify-center gap-1"
+                                        >
+                                            <Upload size={14} /> Signature
+                                        </button>
+                                        {receivedSig && (
+                                            <button
+                                                onClick={() => setReceivedSig(null)}
+                                                className="text-red-600 bg-red-50 hover:bg-red-100 p-2 rounded"
+                                                title="Clear Signature"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -755,7 +1248,7 @@ const PaymentVoucherDesktop = () => {
                             <div id="voucher-preview" className="bg-white p-6 text-sm">
                                 <div className="relative border-2 border-gray-800 p-6">
                                     <div className="text-right text-xs mb-4">
-                                        PV No: {pvNumber} / {date.split('-')[1]} / {date.split('-')[0]}
+                                        PV No: {pvNumber}
                                     </div>
 
                                     <div className="text-center border-b-2 border-gray-800 pb-4 mb-4">
@@ -764,31 +1257,30 @@ const PaymentVoucherDesktop = () => {
                                             <img src={companies[company].logo} alt={companies[company].name} className="h-20 object-contain" />
                                         </div>
                                         <div className="text-sm font-bold">{companies[company].name}</div>
-                                        <div className="text-xs text-gray-600 mt-1">{companies[company].reg}</div>
+                                        <div className="text-xs text-gray-800 mt-1 font-bold">{companies[company].reg}</div>
                                     </div>
 
-                                    <div className="flex justify-between mb-4">
+                                    <div className="flex justify-between mb-4 border-b-2 border-gray-800 pb-2">
                                         <div>
                                             <span className="font-semibold">Pay To:</span> {payTo || '_________________'}
                                         </div>
                                         <div>
-                                            <span className="font-semibold">Date:</span> {date}
+                                            <span className="font-semibold">Date:</span> {formatDate(date)}
                                         </div>
                                     </div>
 
                                     <div className="mb-4">
-                                        <div className="font-semibold mb-1">Payment by:</div>
-                                        <div className="flex gap-4">
-                                            <label>
-                                                <input type="checkbox" checked={paymentMethod === 'cheque'} readOnly /> Cheque
-                                            </label>
-                                            <label>
-                                                <input type="checkbox" checked={paymentMethod === 'cash'} readOnly /> Cash
-                                            </label>
-                                            <label>
-                                                <input type="checkbox" checked={paymentMethod === 'online'} readOnly /> Online
-                                            </label>
-                                        </div>
+                                        <span className="font-semibold">Payment by:</span> <span className="capitalize ml-1">{paymentMethod}</span>
+                                        {paymentMethod === 'cheque' && (
+                                            <div className="mt-1 font-semibold italic">
+                                                Cheque No: {chequeNumber || ''}
+                                            </div>
+                                        )}
+                                        {paymentMethod === 'online' && (
+                                            <div className="mt-1 font-semibold italic">
+                                                Bank: {bankName || ''}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <table className="w-full border-collapse text-xs mb-4">
@@ -856,6 +1348,7 @@ const PaymentVoucherDesktop = () => {
                 isOpen={showHistory}
                 onClose={() => setShowHistory(false)}
                 onLoad={handleLoadVoucher}
+                companies={companies}
             />
         </div>
     );
