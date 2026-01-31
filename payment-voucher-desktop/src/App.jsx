@@ -117,20 +117,20 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
                 <div class="print-voucher-wrapper page-break" style="margin-bottom: 40px; background: white; width: 100%;">
                     <div class="bg-white p-6 text-sm">
                         <div class="relative border-2 border-gray-800 p-6">
-                            <div class="text-right text-xs mb-4">
+                            <div class="text-right text-sm mb-4">
                                 PV No: ${v.pv_number}
                             </div>
 
                             <div class="text-center border-b-2 border-gray-800 pb-4 mb-4">
-                                <div style="font-size: 14px; font-weight: bold;">PAYMENT VOUCHER 2026</div>
+                                <div style="font-size: 16px; font-weight: bold;">PAYMENT VOUCHER 2026</div>
                                 <div class="flex justify-center my-3">
                                     <img src="${companyData.logo}" alt="${companyData.name}" crossorigin="anonymous" style="height: 80px; object-fit: contain;" />
                                 </div>
-                                <div class="text-sm font-bold">${companyData.name}</div>
-                                <div class="text-xs text-gray-800 mt-1 font-bold">${companyData.reg}</div>
+                                <div class="text-base font-bold">${companyData.name}</div>
+                                <div class="text-sm text-gray-800 mt-1 font-bold">${companyData.reg}</div>
                             </div>
 
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 8px; font-size: 14px;">
                                 <div><span class="font-semibold">Pay To:</span> ${v.pay_to || ''}</div>
                                 <div><span class="font-semibold">Date:</span> ${formatDate(v.date)}</div>
                             </div>
@@ -138,10 +138,10 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
                             <div class="mb-4 text-sm font-medium">
                                 <span class="font-semibold">Payment by:</span> <span class="capitalize ml-1">${v.payment_method}</span>
                                 ${v.payment_method === 'cheque' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Cheque No: ${v.cheque_number || ''}</div>` : ''}
-                                ${v.payment_method === 'online' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Bank: ${v.bank_name || ''}</div>` : ''}
+                                ${v.payment_method === 'online' ? `<div style="margin-top: 4px; font-style: italic;">Bank: ${v.bank_name || ''}</div>` : ''}
                             </div>
 
-                            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px;">
                                 <thead>
                                     <tr>
                                         <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: center; width: 40px;">NO.</th>
@@ -168,19 +168,19 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
 
                             <div style="display: flex; border: 1px solid black; margin-top: 20px;">
                                 <div style="flex: 1; border-right: 1px solid black; padding: 10px; text-align: center;">
-                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">PREPARED BY</div>
+                                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">PREPARED BY</div>
                                     ${v.prepared_sig ? `<img src="${v.prepared_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
-                                    <div style="font-size: 10px; margin-top: 5px;">${v.prepared_by || ''}</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">${v.prepared_by || ''}</div>
                                 </div>
                                 <div style="flex: 1; border-right: 1px solid black; padding: 10px; text-align: center;">
-                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">APPROVED BY</div>
+                                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">APPROVED BY</div>
                                     ${v.approved_sig ? `<img src="${v.approved_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
-                                    <div style="font-size: 10px; margin-top: 5px;">${v.approved_by || ''}</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">${v.approved_by || ''}</div>
                                 </div>
                                 <div style="flex: 1; padding: 10px; text-align: center;">
-                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">RECEIVED BY</div>
+                                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">RECEIVED BY</div>
                                     ${v.received_sig ? `<img src="${v.received_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
-                                    <div style="font-size: 10px; margin-top: 5px;">${v.received_by || ''}</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">${v.received_by || ''}</div>
                                 </div>
                             </div>
                         </div>
@@ -262,17 +262,17 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
                 <div class="print-voucher-wrapper page-break" style="margin-bottom: 40px; background: white; width: 100%;">
                     <div class="bg-white p-6 text-sm">
                         <div class="relative border-2 border-gray-800 p-6">
-                            <div class="text-right text-xs mb-4">
+                            <div class="text-right text-sm mb-4">
                                 PV No: ${v.pv_number}
                             </div>
 
                             <div class="text-center border-b-2 border-gray-800 pb-4 mb-4">
-                                <div style="font-size: 14px; font-weight: bold;">PAYMENT VOUCHER 2026</div>
+                                <div style="font-size: 16px; font-weight: bold;">PAYMENT VOUCHER 2026</div>
                                 <div class="flex justify-center my-3">
                                     <img src="${companyData.logo}" alt="${companyData.name}" crossorigin="anonymous" style="height: 80px; object-fit: contain;" />
                                 </div>
-                                <div class="text-sm font-bold">${companyData.name}</div>
-                                <div class="text-xs text-gray-800 mt-1 font-bold">${companyData.reg}</div>
+                                <div class="text-base font-bold">${companyData.name}</div>
+                                <div class="text-sm text-gray-800 mt-1 font-bold">${companyData.reg}</div>
                             </div>
 
                             <div style="display: flex; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 8px;">
@@ -283,10 +283,10 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
                             <div class="mb-4 text-sm font-medium">
                                 <span class="font-semibold">Payment by:</span> <span class="capitalize ml-1">${v.payment_method}</span>
                                 ${v.payment_method === 'cheque' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Cheque No: ${v.cheque_number || ''}</div>` : ''}
-                                ${v.payment_method === 'online' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Bank: ${v.bank_name || ''}</div>` : ''}
+                                ${v.payment_method === 'online' ? `<div style="margin-top: 4px; font-style: italic;">Bank: ${v.bank_name || ''}</div>` : ''}
                             </div>
 
-                            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 16px;">
                                 <thead>
                                     <tr>
                                         <th style="border: 1px solid black; padding: 8px; background: #f3f4f6; text-align: center; width: 40px;">NO.</th>
@@ -313,19 +313,19 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
 
                             <div style="display: flex; border: 1px solid black; margin-top: 20px;">
                                 <div style="flex: 1; border-right: 1px solid black; padding: 10px; text-align: center;">
-                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">PREPARED BY</div>
+                                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">PREPARED BY</div>
                                     ${v.prepared_sig ? `<img src="${v.prepared_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
-                                    <div style="font-size: 10px; margin-top: 5px;">${v.prepared_by || ''}</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">${v.prepared_by || ''}</div>
                                 </div>
                                 <div style="flex: 1; border-right: 1px solid black; padding: 10px; text-align: center;">
-                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">APPROVED BY</div>
+                                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">APPROVED BY</div>
                                     ${v.approved_sig ? `<img src="${v.approved_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
-                                    <div style="font-size: 10px; margin-top: 5px;">${v.approved_by || ''}</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">${v.approved_by || ''}</div>
                                 </div>
                                 <div style="flex: 1; padding: 10px; text-align: center;">
-                                    <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">RECEIVED BY</div>
+                                    <div style="font-weight: bold; font-size: 13px; margin-bottom: 5px;">RECEIVED BY</div>
                                     ${v.received_sig ? `<img src="${v.received_sig}" crossorigin="anonymous" style="height: 50px; max-width: 100%; object-fit: contain; margin: 0 auto;" />` : `<div style="height: 50px;"></div>`}
-                                    <div style="font-size: 10px; margin-top: 5px;">${v.received_by || ''}</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">${v.received_by || ''}</div>
                                 </div>
                             </div>
                         </div>
@@ -575,16 +575,46 @@ const PaymentVoucherDesktop = () => {
     const approvedRef = useRef();
     const receivedRef = useRef();
 
+    const [logoBase64, setLogoBase64] = useState({
+        mentari: new URL('mentari-logo.png', window.location.href).href,
+        nes: new URL('nes-logo.jpg', window.location.href).href
+    });
+
+    useEffect(() => {
+        const loadLogos = async () => {
+            const loadLogo = async (url) => {
+                try {
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (e) {
+                    console.error("Failed to load logo", url, e);
+                    return url;
+                }
+            };
+
+            // Only load if we are likely in an environment where fetch works (browser/electron renderer)
+            const mentari = await loadLogo(new URL('mentari-logo.png', window.location.href).href);
+            const nes = await loadLogo(new URL('nes-logo.jpg', window.location.href).href);
+            setLogoBase64({ mentari, nes });
+        };
+        loadLogos();
+    }, []);
+
     const companies = {
         mentari: {
             name: 'MENTARI INFINITI SDN BHD',
             reg: '(1175141-K)',
-            logo: new URL('mentari-logo.png', window.location.href).href
+            logo: logoBase64.mentari
         },
         nes: {
             name: 'NES SOLUTION & NETWORK SDN BHD',
             reg: '(1545048-W)',
-            logo: new URL('nes-logo.jpg', window.location.href).href
+            logo: logoBase64.nes
         }
     };
 
@@ -606,7 +636,7 @@ const PaymentVoucherDesktop = () => {
     // Generate automatic PV number
     const generatePVNumber = () => {
         const companyCode = company === 'mentari' ? 'MI' : 'NES';
-        const counter = String(pvCounter).padStart(3, '0');
+        const counter = String(pvCounter).padStart(4, '0');
         return `${companyCode}-${counter}`;
     };
 
@@ -713,7 +743,7 @@ const PaymentVoucherDesktop = () => {
             if (resultCounter.success) {
                 const newCounter = resultCounter.counter;
                 // Generate new PV Number
-                const counterStr = String(newCounter).padStart(3, '0');
+                const counterStr = String(newCounter).padStart(4, '0');
                 const companyCode = company === 'mentari' ? 'MI' : 'NES';
                 const newPvNumber = `${companyCode}-${counterStr}`;
 
@@ -1247,20 +1277,20 @@ const PaymentVoucherDesktop = () => {
                         <div className="bg-gray-50 p-6 rounded-lg border-2 border-gray-200">
                             <div id="voucher-preview" className="bg-white p-6 text-sm">
                                 <div className="relative border-2 border-gray-800 p-6">
-                                    <div className="text-right text-xs mb-4">
+                                    <div className="text-right text-sm mb-4">
                                         PV No: {pvNumber}
                                     </div>
 
                                     <div className="text-center border-b-2 border-gray-800 pb-4 mb-4">
-                                        <div className="text-sm font-semibold">PAYMENT VOUCHER 2026</div>
+                                        <div className="text-lg font-bold">PAYMENT VOUCHER 2026</div>
                                         <div className="flex justify-center my-3">
                                             <img src={companies[company].logo} alt={companies[company].name} className="h-20 object-contain" />
                                         </div>
-                                        <div className="text-sm font-bold">{companies[company].name}</div>
-                                        <div className="text-xs text-gray-800 mt-1 font-bold">{companies[company].reg}</div>
+                                        <div className="text-base font-bold">{companies[company].name}</div>
+                                        <div className="text-sm text-gray-800 mt-1 font-bold">{companies[company].reg}</div>
                                     </div>
 
-                                    <div className="flex justify-between mb-4 border-b-2 border-gray-800 pb-2">
+                                    <div className="flex justify-between mb-4 border-b-2 border-gray-800 pb-2 text-sm">
                                         <div>
                                             <span className="font-semibold">Pay To:</span> {payTo || '_________________'}
                                         </div>
@@ -1269,7 +1299,7 @@ const PaymentVoucherDesktop = () => {
                                         </div>
                                     </div>
 
-                                    <div className="mb-4">
+                                    <div className="mb-4 text-sm">
                                         <span className="font-semibold">Payment by:</span> <span className="capitalize ml-1">{paymentMethod}</span>
                                         {paymentMethod === 'cheque' && (
                                             <div className="mt-1 font-semibold italic">
@@ -1277,13 +1307,13 @@ const PaymentVoucherDesktop = () => {
                                             </div>
                                         )}
                                         {paymentMethod === 'online' && (
-                                            <div className="mt-1 font-semibold italic">
+                                            <div className="mt-1 italic">
                                                 Bank: {bankName || ''}
                                             </div>
                                         )}
                                     </div>
 
-                                    <table className="w-full border-collapse text-xs mb-4">
+                                    <table className="w-full border-collapse text-sm mb-4">
                                         <thead>
                                             <tr>
                                                 <th className="border border-gray-800 p-2 bg-gray-100">NO.</th>
@@ -1314,25 +1344,31 @@ const PaymentVoucherDesktop = () => {
                                         </tbody>
                                     </table>
 
-                                    <div className="flex border border-gray-800">
+                                    <div className="flex border border-gray-800 text-sm">
                                         <div className="flex-1 border-r border-gray-800 p-3 text-center">
                                             <div className="font-semibold mb-2">PREPARED BY</div>
-                                            {preparedSig && (
+                                            {preparedSig ? (
                                                 <img src={preparedSig} alt="Signature" className="max-w-full h-12 mx-auto mb-2" />
+                                            ) : (
+                                                <div className="h-12"></div>
                                             )}
                                             <div className="text-xs">{preparedBy}</div>
                                         </div>
                                         <div className="flex-1 border-r border-gray-800 p-3 text-center">
                                             <div className="font-semibold mb-2">APPROVED BY</div>
-                                            {approvedSig && (
+                                            {approvedSig ? (
                                                 <img src={approvedSig} alt="Signature" className="max-w-full h-12 mx-auto mb-2" />
+                                            ) : (
+                                                <div className="h-12"></div>
                                             )}
                                             <div className="text-xs">{approvedBy}</div>
                                         </div>
                                         <div className="flex-1 p-3 text-center">
                                             <div className="font-semibold mb-2">RECEIVED BY</div>
-                                            {receivedSig && (
+                                            {receivedSig ? (
                                                 <img src={receivedSig} alt="Signature" className="max-w-full h-12 mx-auto mb-2" />
+                                            ) : (
+                                                <div className="h-12"></div>
                                             )}
                                             <div className="text-xs">{receivedBy}</div>
                                         </div>
