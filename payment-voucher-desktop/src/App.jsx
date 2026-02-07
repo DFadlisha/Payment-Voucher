@@ -137,7 +137,7 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
 
                             <div class="mb-4 text-sm font-medium">
                                 <span class="font-semibold">Payment by:</span> <span class="capitalize ml-1">${v.payment_method}</span>
-                                ${v.payment_method === 'cheque' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Cheque No: ${v.cheque_number || ''}</div>` : ''}
+                                ${v.payment_method === 'cheque' ? `<div style="margin-top: 4px; font-style: italic;">Cheque No: ${v.cheque_number || ''}</div>` : ''}
                                 ${v.payment_method === 'online' ? `<div style="margin-top: 4px; font-style: italic;">Bank: ${v.bank_name || ''}</div>` : ''}
                             </div>
 
@@ -282,7 +282,7 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
 
                             <div class="mb-4 text-sm font-medium">
                                 <span class="font-semibold">Payment by:</span> <span class="capitalize ml-1">${v.payment_method}</span>
-                                ${v.payment_method === 'cheque' ? `<div style="margin-top: 4px; font-weight: 600; font-style: italic;">Cheque No: ${v.cheque_number || ''}</div>` : ''}
+                                ${v.payment_method === 'cheque' ? `<div style="margin-top: 4px; font-style: italic;">Cheque No: ${v.cheque_number || ''}</div>` : ''}
                                 ${v.payment_method === 'online' ? `<div style="margin-top: 4px; font-style: italic;">Bank: ${v.bank_name || ''}</div>` : ''}
                             </div>
 
@@ -1302,7 +1302,7 @@ const PaymentVoucherDesktop = () => {
                                     <div className="mb-4 text-sm">
                                         <span className="font-semibold">Payment by:</span> <span className="capitalize ml-1">{paymentMethod}</span>
                                         {paymentMethod === 'cheque' && (
-                                            <div className="mt-1 font-semibold italic">
+                                            <div className="mt-1 italic">
                                                 Cheque No: {chequeNumber || ''}
                                             </div>
                                         )}
