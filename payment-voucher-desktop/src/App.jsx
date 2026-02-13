@@ -111,7 +111,10 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
 
         const renderVoucherHTML = (v) => {
             const companyData = companies[v.company];
-            const totalAmount = v.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2);
+            const formatAmount = (amount) => {
+                return (parseFloat(amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
+            const totalAmount = formatAmount(v.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0));
 
             return `
                 <div class="print-voucher-wrapper page-break" style="margin-bottom: 40px; background: white; width: 100%;">
@@ -156,7 +159,7 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
                                             <td style="border: 1px solid black; padding: 6px; text-align: center;">${idx + 1}</td>
                                             <td style="border: 1px solid black; padding: 6px;">${item.description}</td>
                                             <td style="border: 1px solid black; padding: 6px;">${item.invNo}</td>
-                                            <td style="border: 1px solid black; padding: 6px; text-align: right;">${item.amount ? parseFloat(item.amount).toFixed(2) : ''}</td>
+                                            <td style="border: 1px solid black; padding: 6px; text-align: right;">${item.amount ? formatAmount(item.amount) : ''}</td>
                                         </tr>
                                     `).join('')}
                                     <tr style="background: #e5e7eb;">
@@ -256,7 +259,10 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
 
         const renderVoucherHTML = (v) => {
             const companyData = companies[v.company];
-            const totalAmount = v.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2);
+            const formatAmount = (amount) => {
+                return (parseFloat(amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            };
+            const totalAmount = formatAmount(v.items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0));
 
             return `
                 <div class="print-voucher-wrapper page-break" style="margin-bottom: 40px; background: white; width: 100%;">
@@ -301,7 +307,7 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
                                             <td style="border: 1px solid black; padding: 6px; text-align: center;">${idx + 1}</td>
                                             <td style="border: 1px solid black; padding: 6px;">${item.description}</td>
                                             <td style="border: 1px solid black; padding: 6px;">${item.invNo}</td>
-                                            <td style="border: 1px solid black; padding: 6px; text-align: right;">${item.amount ? parseFloat(item.amount).toFixed(2) : ''}</td>
+                                            <td style="border: 1px solid black; padding: 6px; text-align: right;">${item.amount ? formatAmount(item.amount) : ''}</td>
                                         </tr>
                                     `).join('')}
                                     <tr style="background: #e5e7eb;">
@@ -522,7 +528,7 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{voucher.pay_to}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                                                {voucher.total_amount?.toFixed(2)}
+                                                {voucher.total_amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <button
@@ -543,7 +549,7 @@ const HistoryModal = ({ isOpen, onClose, onLoad, companies }) => {
                 <div className="p-4 border-t border-gray-200 bg-white flex justify-between items-center text-sm text-gray-500">
                     <div>Total Vouchers: {vouchers.length} | Selected: {selectedIds.size}</div>
                     <div className="font-medium text-gray-800">
-                        Total Amount: RM {vouchers.reduce((sum, v) => sum + (v.total_amount || 0), 0).toFixed(2)}
+                        Total Amount: RM {vouchers.reduce((sum, v) => sum + (v.total_amount || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                 </div>
             </div>
@@ -569,7 +575,9 @@ const PaymentVoucherDesktop = () => {
     const [approvedSig, setApprovedSig] = useState(null);
     const [receivedSig, setReceivedSig] = useState(null);
     const [savedStatus, setSavedStatus] = useState('');
+
     const [showHistory, setShowHistory] = useState(false);
+    const [isEditingPV, setIsEditingPV] = useState(false);
 
     const preparedRef = useRef();
     const approvedRef = useRef();
@@ -799,6 +807,10 @@ const PaymentVoucherDesktop = () => {
         showStatus('Voucher loaded successfully!');
     };
 
+    const formatAmount = (amount) => {
+        return (parseFloat(amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     const showStatus = (message) => {
         setSavedStatus(message);
         setTimeout(() => setSavedStatus(''), 3000);
@@ -832,7 +844,8 @@ const PaymentVoucherDesktop = () => {
     };
 
     const calculateTotal = () => {
-        return items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0).toFixed(2);
+        const total = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        return formatAmount(total);
     };
 
     // Helper to get HTML for printing/PDF
@@ -1001,14 +1014,22 @@ const PaymentVoucherDesktop = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        PV Number (Auto-generated)
+
+                                    <label className="block text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
+                                        <span>PV Number {isEditingPV ? '(Editing)' : '(Auto)'}</span>
+                                        <button
+                                            onClick={() => setIsEditingPV(!isEditingPV)}
+                                            className="text-blue-600 hover:text-blue-800 text-xs font-bold"
+                                        >
+                                            {isEditingPV ? 'DONE' : 'EDIT'}
+                                        </button>
                                     </label>
                                     <input
                                         type="text"
                                         value={pvNumber}
-                                        readOnly
-                                        className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-gray-100 cursor-not-allowed"
+                                        onChange={(e) => setPvNumber(e.target.value)}
+                                        readOnly={!isEditingPV}
+                                        className={`w-full border border-gray-300 rounded-lg px-4 py-2 ${isEditingPV ? 'bg-white focus:ring-2 focus:ring-blue-500' : 'bg-gray-100 cursor-not-allowed'}`}
                                         placeholder="XXX-000"
                                     />
                                 </div>
@@ -1329,7 +1350,7 @@ const PaymentVoucherDesktop = () => {
                                                     <td className="border border-gray-800 p-2">{item.description}</td>
                                                     <td className="border border-gray-800 p-2">{item.invNo}</td>
                                                     <td className="border border-gray-800 p-2 text-right">
-                                                        {item.amount && parseFloat(item.amount).toFixed(2)}
+                                                        {item.amount && formatAmount(item.amount)}
                                                     </td>
                                                 </tr>
                                             ))}
